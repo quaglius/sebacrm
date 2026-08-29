@@ -9,6 +9,12 @@
     "providers": {
       "emailPassword": true,
       "anonymous": false
-    }
+    },
+    "authorizedDomains": [
+      "localhost",
+      "sebacrm.firebaseapp.com",
+      "sebacrm.web.app",
+      "encaje-crm-234.netlify.app"
+    ]
   }
 }
