@@ -10,11 +10,11 @@ import { ConfigPage } from './pages/ConfigPage'
 import type { ReactNode } from 'react'
 
 function Protected({ children, gerenteOnly = false }: { children: ReactNode; gerenteOnly?: boolean }) {
-  const { profile, loading, firebaseUser } = useAuth()
+  const { profile, loading, firebaseUser, isGerente } = useAuth()
   if (loading) return <div style={{ padding: 40 }}>Cargando…</div>
   if (!firebaseUser || !profile) return <Navigate to="/login" replace />
   if (!profile.active) return <div style={{ padding: 40 }}>Usuario inactivo. Contactá a un gerente.</div>
-  if (gerenteOnly && profile.role !== 'gerente') return <Navigate to="/pipeline" replace />
+  if (gerenteOnly && !isGerente) return <Navigate to="/pipeline" replace />
   return children
 }
 

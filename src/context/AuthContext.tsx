@@ -18,18 +18,27 @@ import {
 import { doc, getDoc, onSnapshot } from 'firebase/firestore'
 import { auth, db } from '../firebase'
 import type { AppUser, Role } from '../types'
-import { createUserProfile, hasAnyUsers, seedDemoData } from '../lib/seed'
+import { createUserProfile, isAppBootstrapped, seedDemoData } from '../lib/seed'
+
+const IMPERSONATE_KEY = 'encaje_impersonate_uid'
 
 interface AuthState {
   firebaseUser: User | null
+  /** Perfil real de la sesión (Auth). */
   profile: AppUser | null
+  /** Perfil efectivo (impersonado si aplica). */
+  effectiveProfile: AppUser | null
   loading: boolean
   needsBootstrap: boolean
   login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
   bootstrapGerente: (email: string, password: string, displayName: string) => Promise<void>
   loadSeed: () => Promise<void>
+  isAdmin: boolean
   isGerente: boolean
+  impersonating: boolean
+  impersonatedUser: AppUser | null
+  setImpersonation: (uid: string | null) => void
 }
 
 const AuthContext = createContext<AuthState | null>(null)
@@ -39,6 +48,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<AppUser | null>(null)
   const [loading, setLoading] = useState(true)
   const [needsBootstrap, setNeedsBootstrap] = useState(false)
+  const [impersonateUid, setImpersonateUid] = useState<string | null>(() => {
+    try {
+      return sessionStorage.getItem(IMPERSONATE_KEY)
+    } catch {
+      return null
+    }
+  })
+  const [impersonatedUser, setImpersonatedUser] = useState<AppUser | null>(null)
 
   useEffect(() => {
     let unsubProfile: (() => void) | undefined
@@ -47,8 +64,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setFirebaseUser(user)
       if (!user) {
         setProfile(null)
-        const any = await hasAnyUsers().catch(() => false)
-        setNeedsBootstrap(!any)
+        setImpersonatedUser(null)
+        setImpersonateUid(null)
+        try {
+          sessionStorage.removeItem(IMPERSONATE_KEY)
+        } catch {
+          /* ignore */
+        }
+        const bootstrapped = await isAppBootstrapped().catch(() => false)
+        setNeedsBootstrap(!bootstrapped)
         setLoading(false)
         return
       }
@@ -75,17 +99,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  useEffect(() => {
+    if (!impersonateUid || !profile || profile.role !== 'admin') {
+      setImpersonatedUser(null)
+      return
+    }
+    return onSnapshot(doc(db, 'users', impersonateUid), (snap) => {
+      if (!snap.exists()) {
+        setImpersonatedUser(null)
+        return
+      }
+      const d = snap.data()
+      setImpersonatedUser({
+        uid: snap.id,
+        email: d.email,
+        displayName: d.displayName,
+        role: d.role as Role,
+        active: d.active,
+      })
+    })
+  }, [impersonateUid, profile])
+
+  const setImpersonation = useCallback((uid: string | null) => {
+    setImpersonateUid(uid)
+    try {
+      if (uid) sessionStorage.setItem(IMPERSONATE_KEY, uid)
+      else sessionStorage.removeItem(IMPERSONATE_KEY)
+    } catch {
+      /* ignore */
+    }
+  }, [])
+
   const login = useCallback(async (email: string, password: string) => {
     await signInWithEmailAndPassword(auth, email, password)
   }, [])
 
   const logout = useCallback(async () => {
+    setImpersonation(null)
     await signOut(auth)
-  }, [])
+  }, [setImpersonation])
 
   const bootstrapGerente = useCallback(async (email: string, password: string, displayName: string) => {
-    const any = await hasAnyUsers()
-    if (any) throw new Error('Ya existe un usuario. Pedile acceso a un gerente.')
+    const bootstrapped = await isAppBootstrapped()
+    if (bootstrapped) throw new Error('La app ya tiene usuarios. Usá el login normal.')
     const cred = await createUserWithEmailAndPassword(auth, email, password)
     await updateProfile(cred.user, { displayName })
     await createUserProfile(cred.user.uid, {
@@ -97,23 +153,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const loadSeed = useCallback(async () => {
-    if (!profile || profile.role !== 'gerente') throw new Error('Solo el gerente puede cargar datos demo.')
+    if (!profile || (profile.role !== 'gerente' && profile.role !== 'admin')) {
+      throw new Error('Solo admin/gerente puede cargar datos demo.')
+    }
     await seedDemoData()
   }, [profile])
+
+  const isAdmin = profile?.role === 'admin'
+  const impersonating = !!(isAdmin && impersonatedUser)
+  const effectiveProfile = impersonating ? impersonatedUser : profile
+  const isGerente =
+    effectiveProfile?.role === 'gerente' ||
+    effectiveProfile?.role === 'admin' ||
+    (!impersonating && isAdmin)
 
   const value = useMemo<AuthState>(
     () => ({
       firebaseUser,
       profile,
+      effectiveProfile,
       loading,
       needsBootstrap,
       login,
       logout,
       bootstrapGerente,
       loadSeed,
-      isGerente: profile?.role === 'gerente',
+      isAdmin: !!isAdmin,
+      isGerente: !!isGerente,
+      impersonating,
+      impersonatedUser,
+      setImpersonation,
     }),
-    [firebaseUser, profile, loading, needsBootstrap, login, logout, bootstrapGerente, loadSeed],
+    [
+      firebaseUser,
+      profile,
+      effectiveProfile,
+      loading,
+      needsBootstrap,
+      login,
+      logout,
+      bootstrapGerente,
+      loadSeed,
+      isAdmin,
+      isGerente,
+      impersonating,
+      impersonatedUser,
+      setImpersonation,
+    ],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

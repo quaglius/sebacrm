@@ -37,18 +37,25 @@ export function useContactos() {
 }
 
 export function useOportunidades() {
-  const { profile, isGerente } = useAuth()
+  const { effectiveProfile, isAdmin, impersonating } = useAuth()
   const [data, setData] = useState<Oportunidad[]>([])
   const [loading, setLoading] = useState(true)
+
   useEffect(() => {
-    if (!profile) {
+    if (!effectiveProfile) {
       setData([])
       setLoading(false)
       return
     }
-    const q = isGerente
+    const seeAll =
+      effectiveProfile.role === 'gerente' ||
+      effectiveProfile.role === 'admin' ||
+      (isAdmin && !impersonating)
+
+    const q = seeAll
       ? collection(db, 'oportunidades')
-      : query(collection(db, 'oportunidades'), where('vendedorId', '==', profile.uid))
+      : query(collection(db, 'oportunidades'), where('vendedorId', '==', effectiveProfile.uid))
+
     return onSnapshot(
       q,
       (snap) => {
@@ -57,7 +64,8 @@ export function useOportunidades() {
       },
       () => setLoading(false),
     )
-  }, [profile?.uid, isGerente])
+  }, [effectiveProfile?.uid, effectiveProfile?.role, isAdmin, impersonating])
+
   return { data, loading }
 }
 

@@ -1,4 +1,4 @@
-export type Role = 'vendedor' | 'gerente'
+export type Role = 'vendedor' | 'gerente' | 'admin'
 export type FitLevel = 'A' | 'B' | 'C'
 export type StageKey =
   | 'fase0'

@@ -8,7 +8,8 @@ import { inviteUser, seedDemoData } from '../lib/seed'
 import type { IcpProfile, Role } from '../types'
 
 export function ConfigPage() {
-  const { isGerente, loadSeed } = useAuth()
+  const { isGerente, isAdmin, profile, loadSeed } = useAuth()
+  const canManage = profile?.role === 'admin' || profile?.role === 'gerente'
   const icp = useIcp()
   const { data: users } = useTeamUsers()
   const [step, setStep] = useState(1)
@@ -137,8 +138,8 @@ export function ConfigPage() {
               ))}
               <div className="wizard-actions">
                 <button type="button" className="btn-edit" onClick={() => setStep(1)}>← Ajustar respuestas</button>
-                <button type="button" className="btn-confirm" onClick={() => void saveIcp()} disabled={!isGerente}>
-                  {isGerente ? 'Se ve bien →' : 'Solo gerente guarda'}
+                <button type="button" className="btn-confirm" onClick={() => void saveIcp()} disabled={!canManage}>
+                  {canManage ? 'Se ve bien →' : 'Solo admin/gerente guarda'}
                 </button>
               </div>
             </div>
@@ -155,7 +156,7 @@ export function ConfigPage() {
           )}
         </div>
 
-        {isGerente && (
+        {canManage && (
           <div className="wizard-card" style={{ marginTop: 20 }}>
             <h3 style={{ marginTop: 0, fontSize: 15 }}>Equipo</h3>
             {msg && <div className="demo-hint" style={{ marginTop: 0 }}>{msg}</div>}
@@ -203,6 +204,7 @@ export function ConfigPage() {
                 <select value={invite.role} onChange={(e) => setInvite({ ...invite, role: e.target.value as Role })}>
                   <option value="vendedor">Vendedor</option>
                   <option value="gerente">Gerente</option>
+                  {isAdmin && <option value="admin">Admin</option>}
                 </select>
               </div>
               <button type="submit" className="btn-primary" disabled={busy}>{busy ? 'Creando…' : 'Crear usuario'}</button>

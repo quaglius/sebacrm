@@ -1,14 +1,18 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useAuth } from '../context/AuthContext'
 
 export function LoginPage() {
   const { login, bootstrapGerente, needsBootstrap } = useAuth()
-  const [email, setEmail] = useState(needsBootstrap ? '' : 'gerente@encaje.demo')
-  const [password, setPassword] = useState(needsBootstrap ? '' : 'Encaje2026!')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [displayName, setDisplayName] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
-  const [mode, setMode] = useState<'login' | 'bootstrap'>(needsBootstrap ? 'bootstrap' : 'login')
+  const [mode, setMode] = useState<'login' | 'bootstrap'>('login')
+
+  useEffect(() => {
+    setMode(needsBootstrap ? 'bootstrap' : 'login')
+  }, [needsBootstrap])
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
@@ -21,7 +25,13 @@ export function LoginPage() {
         await login(email, password)
       }
     } catch (err: unknown) {
-      setError((err as Error).message || 'No se pudo autenticar')
+      const code = (err as { code?: string }).code
+      const msg = (err as Error).message || 'No se pudo autenticar'
+      if (code === 'auth/invalid-credential' || code === 'auth/user-not-found' || code === 'auth/wrong-password') {
+        setError('Email o contraseña incorrectos.')
+      } else {
+        setError(msg)
+      }
     } finally {
       setBusy(false)
     }
@@ -52,11 +62,11 @@ export function LoginPage() {
         )}
         <div className="form-field">
           <label>Email</label>
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="username" />
         </div>
         <div className="form-field">
           <label>Contraseña</label>
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} autoComplete="current-password" />
         </div>
         <button className="btn-primary" disabled={busy} type="submit">
           {busy ? 'Esperá…' : mode === 'bootstrap' ? 'Crear gerente' : 'Entrar'}
@@ -66,9 +76,13 @@ export function LoginPage() {
             Crear primer gerente
           </button>
         )}
+        {!needsBootstrap && mode === 'bootstrap' && (
+          <button type="button" className="btn-secondary" style={{ width: '100%', marginTop: 10 }} onClick={() => setMode('login')}>
+            Volver al login
+          </button>
+        )}
         <div className="demo-hint">
-          Tras el primer gerente, desde Configuración podés <b>cargar datos demo</b> (Ana, Diego, Lucía + 9 oportunidades del prototipo).
-          Demo: gerente@encaje.demo / Encaje2026!
+          Admin: sebaserrandonea@gmail.com · Demo: gerente@encaje.demo / Encaje2026!
         </div>
       </form>
     </div>

@@ -443,3 +443,23 @@ a.nav-item { text-decoration: none; cursor: pointer; }
   .sidebar { display: none; }
   .kpi-row { grid-template-columns: 1fr 1fr; }
 }
+
+/* Admin impersonation */
+.app-shell { display: flex; flex-direction: column; min-height: 100vh; }
+.app-shell .app { flex: 1; min-height: 0; }
+.impersonate-bar {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 8px 16px; background: #1a1a19; color: #f5f5f2;
+  font-size: 12.5px; z-index: 100;
+}
+.impersonate-label { font-weight: 700; letter-spacing: .02em; color: #86b6ef; }
+.impersonate-select {
+  font: inherit; font-size: 12.5px; padding: 5px 10px; border-radius: 6px;
+  border: 1px solid #444; background: #2a2a28; color: #fff; min-width: 220px;
+}
+.impersonate-active { color: #fdf1da; }
+.impersonate-exit {
+  margin-left: auto; font: inherit; font-size: 12px; font-weight: 600;
+  padding: 5px 12px; border-radius: 6px; border: none; cursor: pointer;
+  background: #3987e5; color: #fff;
+}

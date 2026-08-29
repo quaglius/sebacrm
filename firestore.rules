@@ -10,23 +10,30 @@ service cloud.firestore {
     function isActive() {
       return signedIn() && userDoc().active == true;
     }
+    function isAdmin() {
+      return isActive() && userDoc().role == 'admin';
+    }
     function isGerente() {
       return isActive() && userDoc().role == 'gerente';
     }
+    function isGerenteOrAdmin() {
+      return isAdmin() || isGerente();
+    }
 
     match /users/{uid} {
-      allow read: if signedIn() && (request.auth.uid == uid || isGerente() || isActive());
+      allow read: if signedIn() && (request.auth.uid == uid || isGerenteOrAdmin() || isActive());
       allow create: if signedIn() && (
-        (request.auth.uid == uid && request.resource.data.role == 'gerente' && request.resource.data.active == true) ||
-        isGerente()
+        (request.auth.uid == uid && request.resource.data.role in ['gerente', 'admin'] && request.resource.data.active == true) ||
+        isAdmin() ||
+        (isGerente() && request.resource.data.role in ['vendedor', 'gerente'])
       );
-      allow update: if isGerente() || (request.auth.uid == uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName']));
-      allow delete: if isGerente();
+      allow update: if isGerenteOrAdmin() || (request.auth.uid == uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName']));
+      allow delete: if isGerenteOrAdmin();
     }
 
     match /icp/{docId} {
       allow read: if isActive();
-      allow write: if isGerente();
+      allow write: if isGerenteOrAdmin();
     }
 
     match /empresas/{id} {
@@ -40,16 +47,16 @@ service cloud.firestore {
     }
 
     match /oportunidades/{id} {
-      allow read: if isActive() && (isGerente() || resource.data.vendedorId == request.auth.uid);
-      allow create: if isActive() && (isGerente() || request.resource.data.vendedorId == request.auth.uid);
-      allow update: if isActive() && (isGerente() || resource.data.vendedorId == request.auth.uid);
-      allow delete: if isGerente() || (isActive() && resource.data.vendedorId == request.auth.uid);
+      allow read: if isActive() && (isGerenteOrAdmin() || resource.data.vendedorId == request.auth.uid);
+      allow create: if isActive() && (isGerenteOrAdmin() || request.resource.data.vendedorId == request.auth.uid);
+      allow update: if isActive() && (isGerenteOrAdmin() || resource.data.vendedorId == request.auth.uid);
+      allow delete: if isGerenteOrAdmin() || (isActive() && resource.data.vendedorId == request.auth.uid);
     }
 
     match /archivos/{id} {
       allow read: if isActive();
       allow create: if isActive();
-      allow update, delete: if isActive() && (isGerente() || resource.data.uploadedBy == request.auth.uid);
+      allow update, delete: if isActive() && (isGerenteOrAdmin() || resource.data.uploadedBy == request.auth.uid);
     }
 
     match /meta/{docId} {

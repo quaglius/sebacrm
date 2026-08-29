@@ -1,12 +1,12 @@
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   limit,
   query,
   setDoc,
   writeBatch,
-  serverTimestamp,
 } from 'firebase/firestore'
 import {
   createUserWithEmailAndPassword,
@@ -24,10 +24,18 @@ import {
   SEED_OPORTUNIDADES,
   SEED_USERS,
 } from './seedData'
+import type { Role } from '../types'
 
+/** Lectura pública vía meta/bootstrap — no depende de rules de users. */
+export async function isAppBootstrapped(): Promise<boolean> {
+  const snap = await getDoc(doc(db, 'meta', 'bootstrap'))
+  if (snap.exists() && snap.data()?.seeded === true) return true
+  return false
+}
+
+/** @deprecated usar isAppBootstrapped */
 export async function hasAnyUsers(): Promise<boolean> {
-  const snap = await getDocs(query(collection(db, 'users'), limit(1)))
-  return !snap.empty
+  return isAppBootstrapped()
 }
 
 export async function hasSeedData(): Promise<boolean> {
@@ -37,7 +45,7 @@ export async function hasSeedData(): Promise<boolean> {
 
 export async function createUserProfile(
   uid: string,
-  data: { email: string; displayName: string; role: 'vendedor' | 'gerente'; active?: boolean },
+  data: { email: string; displayName: string; role: Role; active?: boolean },
 ) {
   await setDoc(doc(db, 'users', uid), {
     email: data.email,
@@ -163,7 +171,7 @@ export async function inviteUser(params: {
   email: string
   password: string
   displayName: string
-  role: 'vendedor' | 'gerente'
+  role: Role
 }) {
   const secondary = createSecondaryApp()
   const secondaryAuth = getAuth(secondary)
