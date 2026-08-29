@@ -1,9 +1,28 @@
 # CLAUDE.md — stack GitHub + Netlify + Firestore (capa free)
 
-Documento para **cualquier proyecto web** que quieras construir o alinear con un asistente (Claude, Cursor, etc.).  
-Encaje CRM / `sebacrm` es solo un **ejemplo** de cómo quedó armado un caso real; no copies IDs ni secretos de otro proyecto.
+Documento para **cualquier proyecto web** que quieras construir o alinear con un asistente (Claude, Cursor, etc.).
 
 Idioma de trabajo con el humano: **español**, claro, sin jerga innecesaria.
+
+---
+
+## Aviso crítico — este código lo armó otra persona
+
+Si el humano llegó con una carpeta o repo que **ya tiene** `firebase.json`, `.firebaserc`, `.env`, Netlify linkeado o un `origin` de GitHub ajeno:
+
+1. **Eso es el trabajo de quien lo construyó** (cuentas, base de datos, sitio y deploy de *esa* persona).
+2. **Tu trabajo como IA es ayudarlo a él** a quedar dueño del stack: **su** GitHub, **su** Netlify y **su** Firebase/Firestore.
+3. **Prohibido** reutilizar, “seguir usando” o redeployar sobre el proyecto Firebase / sitio Netlify / remote GitHub del autor original, salvo que el humano diga explícitamente *“quiero seguir en las cuentas de X”*.
+4. Tratá el código local como **plantilla / base de producto**. El resultado esperado es:
+   - repo **privado nuevo** (o fork bajo **su** usuario GitHub),
+   - proyecto Firebase **nuevo** (Spark) con app web + Auth form + Firestore,
+   - sitio Netlify **nuevo** linkeado a **su** repo,
+   - `.env` / env vars de Netlify con **su** config de Firebase,
+   - `.firebaserc` y remotos apuntando a **sus** recursos.
+5. Si encontrás API keys, project IDs (`sebacrm`, etc.), URLs `*.netlify.app` o usuarios demo del autor: **reemplazalos**; no los presentes como “ya está listo para producción suya”.
+6. Guía paso a paso a alguien **no técnico**: explicá el porqué en una frase, qué clickear, y no avances de bloque hasta que confirme “listo”.
+
+Objetivo de éxito: *“Cuando termine, yo entro a GitHub / Netlify / Firebase con **mi** usuario y veo **mi** repo, **mi** sitio y **mi** base.”*
 
 ---
 
@@ -12,17 +31,17 @@ Idioma de trabajo con el humano: **español**, claro, sin jerga innecesaria.
 1. Pegalo o adjuntá este `CLAUDE.md` en el proyecto (raíz del repo).
 2. Decile a la IA, por ejemplo:
 
-> Leé `CLAUDE.md` y seguilo. Soy no técnico. Primero explicame cuentas y herramientas; después preguntame lo mínimo y dejame el stack listo (GitHub privado + Netlify + Firebase/Firestore + auth por formulario).
+> Leé `CLAUDE.md` y seguilo. Este proyecto lo armó otra persona; yo necesito **mis propias** cuentas. Soy no técnico. Primero explicame GitHub, Netlify y Firebase; después ayudame a crear **mi** repo privado, **mi** base Firestore y **mi** sitio Netlify, y conectá el código a eso (sin usar los recursos del autor).
 
-3. Si el proyecto **ya existe** en la sesión:
+3. Si el proyecto **ya existe** en la sesión y solo hay que alinear stack:
 
-> Revisá el proyecto actual contra `CLAUDE.md`. Si falta la trilogía o se desvía (Storage pago, Google Auth, sin Netlify, etc.), alinealo y pedime confirmación solo donde haga falta.
+> Revisá el proyecto contra `CLAUDE.md`. Si la trilogía apunta a cuentas ajenas o falta algo, migrá a **mis** GitHub + Netlify + Firestore. No asumas: preguntá.
 
 ---
 
 # Parte A — Onboarding (persona no técnica)
 
-La IA debe **explicar en orden** y **esperar confirmación** en cada bloque antes de crear recursos en la nube. No asumir que ya tenés cuentas.
+La IA debe **explicar en orden** y **esperar confirmación** en cada bloque antes de crear recursos en la nube. No asumir que ya tenés cuentas. **Todas las cuentas deben ser del humano que está en la sesión**, no del autor del código.
 
 ## A1. Cuentas que necesitás (gratis para empezar)
 
@@ -62,37 +81,54 @@ Si algo pide abrir el navegador, **decile al humano exactamente qué clickear** 
 
 ## A3. Flujo que la IA debe ejecutar (después de las cuentas)
 
-Cuando el humano diga que ya tiene GitHub + Netlify + Firebase logueados:
+Primero verificá con el humano: *“¿Estás logueado en GitHub / Netlify / Firebase con **tu** usuario (no el del autor)?”*  
+Si el repo local apunta a un remote ajeno o Firebase a un `projectId` ajeno: **desvinculá y recreá** bajo su cuenta.
 
-1. **Repo GitHub privado**
-   - Crear repo vacío privado (nombre acordado).
-   - `git init` / remote / primer commit / `push` a `main`.
-2. **Proyecto Firebase (Spark)**
-   - Crear proyecto + app **Web**.
+Cuando confirme que las tres cuentas son suyas:
+
+1. **Repo GitHub privado (suyo)**
+   - Crear repo vacío privado bajo **su** usuario (nombre acordado).
+   - Si ya había `origin` del autor: cambiar remote a **su** repo (o empezar git limpio + push).
+   - Primer commit / `push` a `main` con **su** remote.
+2. **Proyecto Firebase nuevo (Spark, suyo)**
+   - Crear proyecto + app **Web** en **su** consola Firebase.
    - Auth: solo **emailPassword**.
    - Firestore **Standard** (no Enterprise).
-   - Región preferida si aplica LatAm: `southamerica-east1` (preguntar si hay duda).
-   - Reglas de seguridad: autenticado; roles según el producto.
-   - Archivos: **en Firestore** (límite práctico ~700 KB por archivo). Documentar el límite.
-3. **Sitio Netlify**
-   - Crear sitio, **vincular el repo GitHub** (no solo deploy manual de carpetas).
+   - Región preferida LatAm: `southamerica-east1` (preguntar si hay duda).
+   - Actualizar `.firebaserc`, `.env` / `.env.example` y env de Netlify con **su** config.
+   - Desplegar reglas; crear su primer usuario admin (email que él elija).
+   - Archivos: **en Firestore** (límite práctico ~700 KB). Documentar el límite.
+3. **Sitio Netlify nuevo (suyo)**
+   - Crear sitio en **su** cuenta Netlify.
+   - **Vincular su repo GitHub** (no deploy suelto de carpetas; no reusar el sitio del autor).
    - `netlify.toml`: build + `publish` + redirect SPA `/* → /index.html` 200.
-   - Variables `VITE_*` / `NEXT_PUBLIC_*` según el framework (Firebase config).
-   - Confirmar que un `git push` dispara deploy.
+   - Variables `VITE_*` (o equivalentes) = **su** Firebase.
+   - Autorizar el dominio `*.netlify.app` **nuevo** en Firebase Auth.
+   - Confirmar que un `git push` a **su** `main` dispara deploy.
 4. **Auth de la app**
    - Login por formulario (email/password).
-   - Sin registro público abierto a menos que el humano lo pida; preferir invite / bootstrap del primer admin.
-5. **Entregar**
-   - URL de Netlify, cómo entrar, usuarios demo si los hay, y qué queda pendiente (si algo).
+   - Sin registro público abierto a menos que lo pida; preferir invite / bootstrap del primer admin **suyo**.
+5. **Entregar (criterio de éxito)**
+   - URL de **su** Netlify.
+   - Cómo entrar con **su** usuario.
+   - Confirmación explícita: “GitHub / Netlify / Firebase están bajo tu cuenta.”
+   - Qué quedó pendiente, si hay algo.
 
-## A4. Checklist de “listo”
+## A3b. Si el humano se traba
 
-- [ ] Repo **privado** en GitHub con código
-- [ ] Firebase Spark: Auth email/password + Firestore Standard
+La IA no abandona el bloque: ofrece la vía UI (clicks en consola) **y** la vía CLI, una a la vez.  
+Ejemplos de bloqueos típicos: Firebase login en el browser, Netlify “Link repository”, GitHub auth al hacer push.  
+No digas “listo” hasta que él pueda abrir **su** URL y loguearse.
+
+## A4. Checklist de “listo” (cuentas del humano)
+
+- [ ] Repo **privado** en **su** GitHub (remote no es del autor)
+- [ ] Firebase Spark **nuevo**: Auth email/password + Firestore Standard
 - [ ] Sin dependencia de Firebase Storage de pago
-- [ ] Netlify **conectado al repo** (continuous deploy)
-- [ ] Login por form funciona en producción
-- [ ] Dominio Netlify autorizado en Firebase Auth (Authorized domains)
+- [ ] Netlify **nuevo** conectado a **su** repo (continuous deploy)
+- [ ] Login por form funciona en **su** URL de producción
+- [ ] Dominio Netlify **suyo** en Authorized domains de Firebase
+- [ ] No quedan project IDs / sitios del autor como destino activo
 - [ ] README corto con cómo correr en local
 
 ---
@@ -101,17 +137,27 @@ Cuando el humano diga que ya tiene GitHub + Netlify + Firebase logueados:
 
 Aplicá estas reglas **siempre** que este archivo esté en el proyecto o el humano lo cite.
 
+## B0. ¿De quién es la infra?
+
+Antes de deploy o de tocar Firebase/Netlify, preguntate (y si hace falta, preguntale):
+
+- ¿`.firebaserc` / `projectId` son de **esta** persona?
+- ¿`git remote -v` apunta a **su** GitHub?
+- ¿Netlify está linkeado a **su** sitio?
+
+Si la respuesta es no o “no sé”: **parar y migrar a sus cuentas** (Parte A), no seguir empujando al entorno del autor.
+
 ## B1. Detectar la trilogía
 
 Al empezar (o cuando pidan “alineá el proyecto”), inspeccioná:
 
 | Pieza | Señales |
 |-------|---------|
-| **GitHub** | `.git`, `origin` → github.com, historial de commits |
-| **Netlify** | `netlify.toml`, sitio linkeado, deploys por push |
-| **Firestore** | `firebase.json`, `firestore.rules`, SDK Firestore |
+| **GitHub** | `.git`, `origin` → github.com **del humano** |
+| **Netlify** | `netlify.toml`, sitio linkeado a **ese** repo, CD por push |
+| **Firestore** | `firebase.json`, `firestore.rules`, SDK; proyecto Firebase **suyo** |
 
-Si falta alguna, **proponé el plan corto** y ejecutá con el mínimo de preguntas.
+Si falta alguna **o** apunta a cuentas ajenas, proponé plan corto de migración y ejecutá con el mínimo de preguntas.
 
 ## B2. Alinear si se desvía
 
@@ -119,10 +165,11 @@ Corregí / evitá:
 
 | Mal | Bien |
 |-----|------|
+| Seguir usando Firebase/Netlify/GitHub del autor | Crear y usar **cuentas del humano** |
 | Firebase Storage / Blaze “porque archivos” | Archivos chicos en **Firestore** |
 | Google Auth por defecto | **Form** email + password |
 | Deploy solo con `netlify deploy` sin repo | Repo linkeado + push → deploy |
-| Secretos en el repo | `.env` en `.gitignore`; en Netlify, env vars |
+| Secretos / `.env` del autor en el repo | `.env` propio en `.gitignore`; env en **su** Netlify |
 | Firestore Enterprise / SQL Connect de pago sin pedirlo | Spark + Firestore Standard |
 
 ## B3. Git: commit y push como hábito
@@ -209,23 +256,29 @@ La IA puede generar/adaptar esto (nombres según stack):
 ```
 Leé CLAUDE.md de punta a punta.
 
-Contexto: soy no técnico / quiero alinear este proyecto.
-Stack obligatorio: GitHub privado + Netlify (CD por push) + Firebase Spark
-(Firestore Standard + Auth email/password). Archivos en Firestore, no Storage pago.
-No uses Google Auth.
+Contexto: este proyecto lo armó otra persona. Soy no técnico.
+Necesito que me ayudes a configurar MY propia trilogía:
+GitHub privado (mío) + Netlify (mío, CD por push) + Firebase Spark (mío:
+Firestore Standard + Auth email/password). Archivos en Firestore, no Storage pago.
+No uses Google Auth. No reutilices el Firebase/Netlify/repo del autor.
 
-1) Decime qué cuentas/CLI/MCP faltan y cómo activarlos.
+1) Explicame qué cuentas crear y qué CLI/MCP activar; esperá a que confirme.
 2) Preguntá solo lo bloqueante.
-3) Si el trabajo es grande: proponé plan (alta capacidad) con criterios de aceptación;
-   después ejecutá con modelo económico.
-4) Dejá repo, Firestore, Netlify y login form listos; commit + push al terminar cada bloque.
+3) Creá/migrá a MI repo, MI Firestore y MI Netlify; actualizá env y remotes.
+4) Si el trabajo es grande: plan con modelo de alta capacidad (criterios de
+   aceptación); después ejecutá con modelo económico.
+5) Commit + push a MI main al cerrar cada bloque. Al final confirmá que
+   todo queda bajo MI usuario.
 ```
 
 ---
 
-# Parte E — Ejemplo de referencia (opcional)
+# Parte E — Este repo como plantilla (no como “tu producción”)
 
-Un proyecto ya montado con esta filosofía: CRM con pipeline, Auth form, Firestore, Netlify linkeado a GitHub.  
-Sirve de **inspiración de estructura**, no de copia ciega de project IDs, API keys ni usuarios.
+El código que acompaña este archivo puede ser un CRM u otra app **ya escrita por alguien más**.
 
-Si estás en **ese** repo y te piden “igual que producción”, mirá `netlify.toml`, `firebase.json`, `firestore.rules` y el flujo de login existentes antes de reinventar.
+- Usalo como **base de producto** (UI, reglas de ejemplo, estructura).
+- **No** asumas que `sebacrm`, un `*.netlify.app` existente o usuarios demo son “tuyos”.
+- Tu meta al seguir este doc: **clonar la forma de trabajo**, no heredar la infra.
+
+Si el humano pide “dejarlo igual pero en mis cuentas”, el camino correcto es migración (Parte A3), no un push más al remote original.
