@@ -8,7 +8,7 @@ import { inviteUser, seedDemoData } from '../lib/seed'
 import type { IcpProfile, Role } from '../types'
 
 export function ConfigPage() {
-  const { isGerente, isAdmin, profile, loadSeed } = useAuth()
+  const { isAdmin, profile, loadSeed } = useAuth()
   const canManage = profile?.role === 'admin' || profile?.role === 'gerente'
   const icp = useIcp()
   const { data: users } = useTeamUsers()
