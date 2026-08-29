@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prototipo — CRM de indagación guiada</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface-1: #fcfcfb;
+    --page: #f9f9f7;
+    --surface-card: #ffffff;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted: #898781;
+    --gridline: #e1e0d9;
+    --border: rgba(11,11,11,0.10);
+    --brand: #2a78d6;
+    --brand-dark: #184f95;
+    --brand-100: #cde2fb;
+    --brand-250: #86b6ef;
+    --brand-400: #3987e5;
+    --status-good: #0ca30c;
+    --status-good-bg: #e6f6e6;
+    --status-warning: #b8790f;
+    --status-warning-bg: #fdf1da;
+    --status-serious: #c1512b;
+    --status-serious-bg: #fbe6dd;
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--page);
+    color: var(--text-primary);
+  }
+
+  .app { display: flex; min-height: 100vh; }
+
+  /* Sidebar */
+  .sidebar {
+    width: 220px; flex-shrink: 0;
+    background: var(--surface-card);
+    border-right: 1px solid var(--gridline);
+    padding: 24px 16px;
+    display: flex; flex-direction: column;
+    gap: 4px;
+  }
+  .brand {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 28px; padding: 0 8px;
+  }
+  .brand-mark {
+    width: 30px; height: 30px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--brand), var(--brand-dark));
+    flex-shrink: 0;
+  }
+  .brand-name { font-weight: 700; font-size: 15px; line-height: 1.2; }
+  .brand-sub { font-size: 11px; color: var(--text-muted); }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 10px; border-radius: 8px;
+    font-size: 13.5px; color: var(--text-secondary);
+    cursor: default;
+  }
+  .nav-item.active { background: var(--brand-100); color: var(--brand-dark); font-weight: 600; }
+  .nav-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .6; }
+  .sidebar-note {
+    margin-top: auto; padding: 12px; border-radius: 10px;
+    background: var(--page); border: 1px solid var(--gridline);
+    font-size: 11.5px; color: var(--text-muted); line-height: 1.5;
+  }
+
+  /* Main */
+  .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .topbar {
+    padding: 20px 28px 16px; border-bottom: 1px solid var(--gridline);
+    background: var(--surface-card);
+    display: flex; align-items: baseline; justify-content: space-between; gap: 20px;
+  }
+  .topbar h1 { font-size: 19px; margin: 0 0 2px; }
+  .topbar p { margin: 0; font-size: 12.5px; color: var(--text-muted); max-width: 620px; }
+  .legend { display: flex; gap: 14px; font-size: 11.5px; color: var(--text-secondary); flex-shrink: 0; }
+  .legend span { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+  .legend .chip { width: 9px; height: 9px; border-radius: 3px; }
+
+  .board-wrap { flex: 1; overflow-x: auto; padding: 22px 28px 32px; }
+  .board { display: flex; gap: 16px; min-width: max-content; }
+  .column { width: 246px; flex-shrink: 0; }
+  .column-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 4px 10px; border-bottom: 2px solid var(--gridline);
+    margin-bottom: 12px;
+  }
+  .column-head h2 { font-size: 12.5px; font-weight: 700; margin: 0; text-transform: uppercase; letter-spacing: .03em; }
+  .column-count {
+    font-size: 11px; color: var(--text-muted); background: var(--page);
+    border: 1px solid var(--gridline); border-radius: 20px; padding: 1px 7px;
+  }
+  .column.phase-zero .column-head { border-bottom-color: var(--brand); }
+  .column.post-sale .column-head { border-bottom-color: var(--status-good); }
+
+  .card {
+    background: var(--surface-card); border: 1px solid var(--gridline);
+    border-radius: 12px; padding: 13px 14px; margin-bottom: 10px;
+    cursor: pointer; transition: box-shadow .15s, border-color .15s;
+  }
+  .card:hover { box-shadow: 0 4px 14px rgba(11,11,11,0.08); border-color: #c9c8c1; }
+  .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+  .card-empresa { font-size: 13.5px; font-weight: 600; line-height: 1.25; }
+  .card-contacto { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; }
+  .fit-badge {
+    font-size: 10.5px; font-weight: 700; border-radius: 6px; padding: 2px 6px;
+    flex-shrink: 0; white-space: nowrap;
+  }
+  .fit-A { background: var(--status-good-bg); color: var(--status-good); }
+  .fit-B { background: var(--status-warning-bg); color: var(--status-warning); }
+  .fit-C { background: var(--status-serious-bg); color: var(--status-serious); }
+
+  .progress-row { margin-top: 10px; }
+  .progress-label { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--text-muted); margin-bottom: 4px; }
+  .progress-track { height: 5px; border-radius: 3px; background: var(--gridline); overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--brand); border-radius: 3px; }
+
+  .card-next {
+    margin-top: 10px; padding-top: 9px; border-top: 1px dashed var(--gridline);
+    font-size: 11px; color: var(--text-secondary); line-height: 1.4;
+  }
+  .card-next b { color: var(--text-primary); font-weight: 600; }
+
+  /* Drawer */
+  .backdrop {
+    position: fixed; inset: 0; background: rgba(11,11,11,0.35);
+    opacity: 0; pointer-events: none; transition: opacity .2s;
+    z-index: 40;
+  }
+  .backdrop.open { opacity: 1; pointer-events: auto; }
+
+  .drawer {
+    position: fixed; top: 0; right: 0; height: 100vh; width: 480px; max-width: 92vw;
+    background: var(--surface-card); box-shadow: -8px 0 30px rgba(11,11,11,0.15);
+    transform: translateX(100%); transition: transform .25s ease;
+    z-index: 41; display: flex; flex-direction: column;
+  }
+  .drawer.open { transform: translateX(0); }
+  .drawer-head { padding: 22px 24px 16px; border-bottom: 1px solid var(--gridline); }
+  .drawer-close {
+    position: absolute; top: 18px; right: 20px; width: 28px; height: 28px;
+    border-radius: 50%; border: 1px solid var(--gridline); background: var(--page);
+    cursor: pointer; font-size: 14px; color: var(--text-secondary);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .drawer-empresa { font-size: 18px; font-weight: 700; margin: 0 0 4px; padding-right: 30px; }
+  .drawer-meta { font-size: 12.5px; color: var(--text-muted); }
+  .drawer-body { padding: 18px 24px 32px; overflow-y: auto; flex: 1; }
+
+  .section-title {
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--text-muted); margin: 22px 0 10px;
+  }
+  .section-title:first-child { margin-top: 0; }
+
+  .fit-panel {
+    display: flex; gap: 12px; align-items: flex-start;
+    padding: 12px 14px; border-radius: 10px; border: 1px solid var(--gridline); background: var(--page);
+  }
+  .fit-panel .fit-badge { font-size: 13px; padding: 4px 9px; border-radius: 8px; }
+  .fit-panel p { margin: 0; font-size: 12.5px; color: var(--text-secondary); line-height: 1.5; }
+
+  .contact-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 9px 0; border-bottom: 1px solid var(--gridline); font-size: 13px;
+  }
+  .contact-row:last-child { border-bottom: none; }
+  .contact-row .role { font-size: 11px; color: var(--text-muted); }
+
+  .checklist-item {
+    display: flex; gap: 10px; align-items: flex-start;
+    padding: 8px 0; border-bottom: 1px solid var(--gridline); font-size: 12.5px; line-height: 1.45;
+  }
+  .checklist-item:last-child { border-bottom: none; }
+  .check-icon {
+    width: 17px; height: 17px; border-radius: 50%; flex-shrink: 0; margin-top: 1px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .check-icon.done { background: var(--status-good-bg); }
+  .check-icon.pending { background: var(--status-warning-bg); }
+  .check-icon.unverified { background: var(--brand-100); }
+  .checklist-item.pending-text { color: var(--text-muted); font-style: italic; }
+  .checklist-item .item-label { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .checklist-item.unverified-row { flex-direction: column; cursor: pointer; }
+  .checklist-item.unverified-row .row-top { display: flex; gap: 10px; align-items: flex-start; width: 100%; }
+  .unverified-tag {
+    font-size: 10px; font-weight: 700; color: var(--brand-dark); background: var(--brand-100);
+    border-radius: 8px; padding: 1px 6px; margin-left: 4px;
+  }
+  .confirm-panel {
+    display: none; margin: 8px 0 2px 27px; padding: 10px 12px; border-radius: 8px;
+    background: var(--page); border: 1px solid var(--gridline); font-size: 11.5px;
+  }
+  .confirm-panel.open { display: block; }
+  .confirm-panel .detected-label { font-size: 10px; text-transform: uppercase; letter-spacing: .03em; color: var(--text-muted); margin-bottom: 4px; }
+  .confirm-panel .detected-text { color: var(--text-primary); line-height: 1.5; margin-bottom: 9px; font-style: italic; }
+  .confirm-panel textarea {
+    width: 100%; font: inherit; font-size: 12px; padding: 7px 9px; border-radius: 6px;
+    border: 1px solid var(--gridline); resize: vertical; min-height: 46px; margin-bottom: 8px;
+    font-family: inherit;
+  }
+  .confirm-actions { display: flex; gap: 8px; }
+  .btn-confirm, .btn-edit {
+    font-size: 11.5px; font-weight: 600; padding: 6px 12px; border-radius: 7px; border: none; cursor: pointer;
+  }
+  .btn-confirm { background: var(--status-good); color: #fff; }
+  .btn-edit { background: #fff; color: var(--text-secondary); border: 1px solid var(--gridline); }
+  .row-saved { font-size: 11px; color: var(--status-good); font-weight: 600; margin-top: 2px; margin-left: 27px; }
+  .why-note {
+    display: flex; gap: 6px; align-items: flex-start; margin: 4px 0 2px 27px; padding: 7px 10px;
+    background: var(--status-good-bg); border-radius: 7px; font-size: 11px; color: #0a6b0a; line-height: 1.4;
+    max-width: 380px; animation: whyIn .25s ease;
+  }
+  @keyframes whyIn { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: translateY(0); } }
+
+  .toast {
+    position: fixed; bottom: 26px; right: 26px; z-index: 60;
+    background: #1a1a19; color: #fff; padding: 12px 16px; border-radius: 10px;
+    font-size: 12.5px; line-height: 1.5; max-width: 300px; box-shadow: 0 10px 30px rgba(11,11,11,0.25);
+    display: flex; gap: 10px; align-items: flex-start;
+    opacity: 0; transform: translateY(10px); pointer-events: none; transition: opacity .25s, transform .25s;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast b { color: var(--brand-250); }
+  .toast .toast-icon { font-size: 16px; flex-shrink: 0; }
+  .source-tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 10px; font-weight: 600; font-style: normal; letter-spacing: .01em;
+    color: var(--text-muted); background: var(--page); border: 1px solid var(--gridline);
+    border-radius: 10px; padding: 1px 7px 1px 5px; flex-shrink: 0;
+  }
+  .source-tag svg { flex-shrink: 0; }
+
+  .capture-legend {
+    display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0 4px;
+    font-size: 10.5px; color: var(--text-muted);
+  }
+  .capture-legend span { display: flex; align-items: center; gap: 4px; }
+
+  .suggestion-box {
+    padding: 13px 14px; border-radius: 10px; border: 1px solid var(--brand-250);
+    background: var(--brand-100); font-size: 12.5px; color: var(--brand-dark); line-height: 1.55;
+  }
+  .suggestion-box b { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .03em; margin-bottom: 4px; }
+
+  .minuta-box {
+    padding: 13px 14px; border-radius: 10px; border: 1px solid var(--gridline);
+    background: var(--surface-1); font-size: 12.5px; color: var(--text-secondary); line-height: 1.55;
+  }
+  .minuta-box .minuta-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .minuta-box .minuta-head b { font-size: 11px; text-transform: uppercase; letter-spacing: .03em; color: var(--text-primary); }
+  .minuta-box .minuta-tag { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 6px; background: var(--status-good-bg); color: var(--status-good); }
+  .minuta-box .minuta-row { margin-top: 6px; }
+  .minuta-box .minuta-row b { color: var(--text-primary); font-weight: 600; }
+  .minuta-box.empty { color: var(--text-muted); font-style: italic; }
+
+  .timeline-item {
+    display: flex; gap: 10px; padding: 8px 0; font-size: 12px; border-bottom: 1px solid var(--gridline);
+  }
+  .timeline-item:last-child { border-bottom: none; }
+  .timeline-date { color: var(--text-muted); width: 62px; flex-shrink: 0; }
+  .timeline-note { color: var(--text-secondary); }
+
+  .mock-flag {
+    display: inline-block; margin-top: 10px; font-size: 10.5px; color: var(--text-muted);
+  }
+
+  /* View switch */
+  .view-switch {
+    display: flex; border: 1px solid var(--gridline); border-radius: 8px; overflow: hidden; flex-shrink: 0;
+  }
+  .view-switch button {
+    font: inherit; font-size: 12px; font-weight: 600; color: var(--text-secondary);
+    background: var(--surface-card); border: none; padding: 7px 14px; cursor: pointer;
+  }
+  .view-switch button.active { background: var(--brand); color: #fff; }
+
+  /* Mobile simulation */
+  .mobile-view { display: none; justify-content: center; padding: 30px 0 50px; background: var(--page); flex: 1; overflow-y: auto; }
+  body.mobile-mode .board-wrap { display: none; }
+  body.mobile-mode .mobile-view { display: flex; }
+
+  .phone {
+    width: 360px; flex-shrink: 0; background: var(--surface-card);
+    border-radius: 34px; border: 8px solid #1a1a19; box-shadow: 0 20px 45px rgba(11,11,11,0.18);
+    overflow: hidden; display: flex; flex-direction: column; height: 720px;
+  }
+  .phone-notch { height: 22px; background: #1a1a19; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .phone-notch::after { content: ""; width: 70px; height: 8px; border-radius: 6px; background: #333; }
+  .phone-head { padding: 14px 16px 10px; border-bottom: 1px solid var(--gridline); flex-shrink: 0; }
+  .phone-head h3 { margin: 0 0 2px; font-size: 15px; }
+  .phone-head p { margin: 0; font-size: 11px; color: var(--text-muted); }
+  .phone-list { flex: 1; overflow-y: auto; padding: 10px 12px 16px; }
+  .phone-card {
+    background: var(--page); border: 1px solid var(--gridline); border-radius: 12px;
+    padding: 12px; margin-bottom: 9px; cursor: pointer;
+  }
+  .phone-card .pc-top { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
+  .phone-card .pc-empresa { font-size: 13px; font-weight: 700; }
+  .phone-card .pc-stage { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
+  .phone-card .pc-action {
+    margin-top: 8px; font-size: 11px; color: var(--brand-dark); background: var(--brand-100);
+    border-radius: 7px; padding: 6px 8px; line-height: 1.4;
+  }
+  .phone-tabbar {
+    display: flex; border-top: 1px solid var(--gridline); flex-shrink: 0; padding: 8px 0 10px;
+    background: var(--surface-card);
+  }
+  .phone-tabbar div { flex: 1; text-align: center; font-size: 9.5px; color: var(--text-muted); }
+  .phone-tabbar div.active { color: var(--brand); font-weight: 700; }
+  .phone-tabbar .tab-dot { width: 16px; height: 16px; margin: 0 auto 3px; border-radius: 5px; background: currentColor; opacity: .18; }
+  .phone-tabbar div.active .tab-dot { opacity: .9; background: var(--brand-100); border: 1.5px solid var(--brand); }
+
+  .mobile-caption { width: 360px; margin-top: 14px; font-size: 11.5px; color: var(--text-muted); text-align: center; line-height: 1.5; }
+
+  /* Reportes */
+  .reportes-wrap { padding: 22px 28px 40px; }
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+  .kpi-tile {
+    background: var(--surface-card); border: 1px solid var(--gridline); border-radius: 12px; padding: 16px 18px;
+  }
+  .kpi-label { font-size: 11px; color: var(--text-muted); margin-bottom: 8px; }
+  .kpi-value { font-size: 26px; font-weight: 700; line-height: 1; }
+  .kpi-value.warn { color: var(--status-warning); }
+  .kpi-sub { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+
+  .panel-card {
+    background: var(--surface-card); border: 1px solid var(--gridline); border-radius: 12px;
+    padding: 18px 20px; margin-bottom: 16px;
+  }
+  .panel-card-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; }
+  .panel-card-head h3 { margin: 0; font-size: 14px; }
+  .panel-card-sub { font-size: 11.5px; color: var(--text-muted); }
+
+  .team-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .team-table th { text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: .03em; color: var(--text-muted); padding: 0 8px 8px; border-bottom: 1px solid var(--gridline); }
+  .team-table td { padding: 10px 8px; border-bottom: 1px solid var(--gridline); vertical-align: middle; }
+  .team-table tr:last-child td { border-bottom: none; }
+  .mini-bar-track { width: 90px; height: 6px; background: var(--gridline); border-radius: 3px; overflow: hidden; display: inline-block; vertical-align: middle; margin-right: 8px; }
+  .mini-bar-fill { height: 100%; background: var(--brand); display: block; }
+  .alert-pill { font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 10px; }
+  .alert-pill.ok { background: var(--status-good-bg); color: var(--status-good); }
+  .alert-pill.warn { background: var(--status-warning-bg); color: var(--status-warning); }
+
+  .fit-bars { display: flex; flex-direction: column; gap: 10px; }
+  .fit-bar-row { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+  .fit-bar-row .fbr-label { width: 90px; flex-shrink: 0; color: var(--text-secondary); }
+  .fit-bar-row .fbr-track { flex: 1; height: 14px; background: var(--gridline); border-radius: 4px; overflow: hidden; display: block; }
+  .fit-bar-row .fbr-fill { height: 100%; display: block; }
+  .fit-bar-row .fbr-count { width: 26px; text-align: right; color: var(--text-muted); font-size: 11px; }
+
+  /* Configuración / wizard */
+  .wizard-wrap { padding: 22px 28px 40px; display: flex; flex-direction: column; align-items: center; }
+  .wizard-card {
+    width: 100%; max-width: 560px; background: var(--surface-card); border: 1px solid var(--gridline);
+    border-radius: 14px; padding: 22px 26px 26px;
+  }
+  .wizard-steps { display: flex; gap: 6px; margin-bottom: 20px; }
+  .wizard-step {
+    flex: 1; font-size: 11px; color: var(--text-muted); text-align: center; padding-bottom: 8px;
+    border-bottom: 3px solid var(--gridline);
+  }
+  .wizard-step span {
+    display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px;
+    border-radius: 50%; background: var(--gridline); color: #fff; font-size: 10px; margin-right: 4px;
+  }
+  .wizard-step.active { color: var(--brand-dark); font-weight: 700; border-bottom-color: var(--brand); }
+  .wizard-step.active span { background: var(--brand); }
+  .wizard-panel { display: none; }
+  .wizard-panel.active { display: block; }
+  .wizard-label { display: block; font-size: 12px; font-weight: 600; margin: 14px 0 6px; }
+  .wizard-label:first-child { margin-top: 0; }
+  .wizard-input {
+    width: 100%; font: inherit; font-size: 12.5px; padding: 10px 12px; border-radius: 8px;
+    border: 1px solid var(--gridline); resize: vertical; margin-bottom: 4px;
+  }
+  .wizard-input-sm { font: inherit; font-size: 12.5px; padding: 7px 10px; border-radius: 7px; border: 1px solid var(--gridline); width: 60%; text-align: right; }
+  .ai-badge {
+    display: inline-block; font-size: 10.5px; font-weight: 700; color: var(--brand-dark);
+    background: var(--brand-100); border-radius: 8px; padding: 4px 9px; margin-bottom: 12px;
+  }
+  .icp-field { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--gridline); font-size: 12.5px; }
+  .icp-field:last-of-type { border-bottom: none; }
+  .wizard-actions { display: flex; justify-content: space-between; margin-top: 16px; }
+  .wizard-next { margin-top: 16px; }
+  .wizard-done { text-align: center; padding: 20px 10px 6px; }
+  .wizard-done-icon {
+    width: 44px; height: 44px; border-radius: 50%; background: var(--status-good-bg); color: var(--status-good);
+    font-size: 22px; display: flex; align-items: center; justify-content: center; margin: 0 auto 14px;
+  }
+  .wizard-done h3 { margin: 0 0 8px; font-size: 15px; }
+  .wizard-done p { margin: 0; font-size: 12.5px; color: var(--text-secondary); line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="sidebar">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div>
+        <div class="brand-name">Encaje CRM</div>
+        <div class="brand-sub">prototipo navegable</div>
+      </div>
+    </div>
+    <div class="nav-item active" data-nav="pipeline"><span class="nav-dot"></span> Pipeline</div>
+    <div class="nav-item" data-nav="empresas"><span class="nav-dot"></span> Empresas</div>
+    <div class="nav-item" data-nav="contactos"><span class="nav-dot"></span> Contactos</div>
+    <div class="nav-item" data-nav="reportes"><span class="nav-dot"></span> Reportes</div>
+    <div class="nav-item" data-nav="config"><span class="nav-dot"></span> Configuración</div>
+    <div class="sidebar-note">
+      Este es un mockup visual para ver cómo se vería el flujo — no guarda datos reales. Los datos de las tarjetas son de ejemplo.
+    </div>
+  </div>
+
+  <div class="main">
+
+    <div id="viewPipeline">
+      <div class="topbar">
+        <div>
+          <h1>Pipeline</h1>
+          <p>Cada tarjeta muestra el encaje con el ICP y cuánta información de valor tiene cargada. Hacé clic en una tarjeta para ver el detalle de indagación.</p>
+        </div>
+        <div style="display:flex; align-items:center; gap:16px;">
+          <div class="legend">
+            <span><span class="chip" style="background:var(--status-good)"></span> Encaje A</span>
+            <span><span class="chip" style="background:var(--status-warning)"></span> Encaje B</span>
+            <span><span class="chip" style="background:var(--status-serious)"></span> Encaje C</span>
+          </div>
+          <div class="view-switch">
+            <button id="btnDesktop" class="active">Escritorio</button>
+            <button id="btnMobile">Mobile</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="board-wrap">
+        <div class="board" id="board"></div>
+      </div>
+
+      <div class="mobile-view">
+        <div>
+          <div class="phone">
+            <div class="phone-notch"></div>
+            <div class="phone-head">
+              <h3>Hoy</h3>
+              <p>Priorizado por lo que más te conviene tocar ahora</p>
+            </div>
+            <div class="phone-list" id="phoneList"></div>
+            <div class="phone-tabbar">
+              <div class="active"><div class="tab-dot"></div>Hoy</div>
+              <div><div class="tab-dot"></div>Pipeline</div>
+              <div><div class="tab-dot"></div>Empresas</div>
+              <div><div class="tab-dot"></div>Más</div>
+            </div>
+          </div>
+          <div class="mobile-caption">Vista para el vendedor en la calle: lo esencial de cada prospecto antes de la visita, y todo lo capturado se confirma con un toque — sin formularios largos.</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="viewReportes" style="display:none">
+      <div class="topbar">
+        <div>
+          <h1>Reportes — vista de gerencia</h1>
+          <p>Salud del pipeline del equipo: no es control, es visibilidad para acompañar mejor a cada vendedor.</p>
+        </div>
+      </div>
+      <div class="reportes-wrap">
+        <div class="kpi-row" id="kpiRow"></div>
+        <div class="panel-card">
+          <div class="panel-card-head">
+            <h3>Por vendedor</h3>
+            <span class="panel-card-sub">Nivel personal según calidad de indagación — no es un ranking entre compañeros</span>
+          </div>
+          <table class="team-table" id="teamTable"></table>
+        </div>
+        <div class="panel-card">
+          <div class="panel-card-head">
+            <h3>Distribución de encaje</h3>
+            <span class="panel-card-sub">Todas las oportunidades activas</span>
+          </div>
+          <div class="fit-bars" id="fitBars"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="viewConfig" style="display:none">
+      <div class="topbar">
+        <div>
+          <h1>Configuración — setup asistido por IA</h1>
+          <p>Así se arma el ICP de un negocio nuevo en minutos, no en semanas (ver sección 9 del documento).</p>
+        </div>
+      </div>
+      <div class="wizard-wrap">
+        <div class="wizard-card">
+          <div class="wizard-steps">
+            <div class="wizard-step active" data-step="1"><span>1</span> Contanos tu negocio</div>
+            <div class="wizard-step" data-step="2"><span>2</span> IA sugiere tu ICP</div>
+            <div class="wizard-step" data-step="3"><span>3</span> Confirmar y listo</div>
+          </div>
+
+          <div class="wizard-panel active" id="wstep1">
+            <label class="wizard-label">¿Qué problema resolvés y para qué tipo de empresa?</label>
+            <textarea class="wizard-input" rows="3">Fabricamos e instalamos sistemas de refrigeración industrial para plantas de alimentos y bebidas medianas.</textarea>
+            <label class="wizard-label">Contanos un par de clientes con los que te fue bien</label>
+            <textarea class="wizard-input" rows="2">Frigorífico del Sur, Envases Patagonia — ambos con más de 50 empleados y producción propia.</textarea>
+            <button class="btn-confirm wizard-next" data-next="2">Generar ICP con IA →</button>
+          </div>
+
+          <div class="wizard-panel" id="wstep2">
+            <div class="ai-badge">Sugerido por IA a partir de tus respuestas</div>
+            <div class="icp-field"><span>Rubro objetivo</span><input class="wizard-input-sm" value="Industria alimenticia / bebidas, metalmecánica"></div>
+            <div class="icp-field"><span>Facturación estimada</span><input class="wizard-input-sm" value="USD 500.000 – 5.000.000 anuales"></div>
+            <div class="icp-field"><span>Cantidad de empleados</span><input class="wizard-input-sm" value="40 – 100"></div>
+            <div class="icp-field"><span>Volumen de consumo estimado</span><input class="wizard-input-sm" value="Media–alta demanda de refrigeración continua"></div>
+            <div class="icp-field"><span>Señal de encaje fuerte</span><input class="wizard-input-sm" value="Producción propia + expansión reciente de planta"></div>
+            <div class="wizard-actions">
+              <button class="btn-edit wizard-next" data-next="1">← Ajustar respuestas</button>
+              <button class="btn-confirm wizard-next" data-next="3">Se ve bien →</button>
+            </div>
+          </div>
+
+          <div class="wizard-panel" id="wstep3">
+            <div class="wizard-done">
+              <div class="wizard-done-icon">✓</div>
+              <h3>ICP listo y activo</h3>
+              <p>Desde ahora, cada prospecto nuevo se compara automáticamente contra este perfil y recibe su encaje A/B/C. Podés ajustarlo cuando quieras desde Configuración.</p>
+            </div>
+          </div>
+        </div>
+        <div class="mobile-caption" style="width:auto; max-width:520px;">Tiempo estimado del flujo completo: 30–60 minutos la primera vez, incluyendo ajustes manuales — no semanas de configuración.</div>
+      </div>
+    </div>
+
+    <div id="viewStub" style="display:none">
+      <div class="topbar">
+        <div>
+          <h1 id="stubTitle">Empresas</h1>
+          <p>Vista no incluida en esta iteración del prototipo — el foco acá estuvo en Pipeline, Reportes y Configuración.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="backdrop" id="backdrop"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-head">
+    <button class="drawer-close" id="drawerClose">&times;</button>
+    <div class="drawer-empresa" id="dEmpresa"></div>
+    <div class="drawer-meta" id="dMeta"></div>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STAGES = [
+  { key: "fase0", label: "Fase 0 — Investigación previa", phaseZero: true },
+  { key: "prospeccion", label: "Prospección" },
+  { key: "oportunidad", label: "Oportunidad" },
+  { key: "cotizacion", label: "Cotización" },
+  { key: "definicion", label: "Definición" },
+  { key: "postventa", label: "Postventa", postSale: true },
+];
+
+const COMPANIES = [
+  {
+    id: 1, vendedor: "Ana Gómez", etapa: "fase0", empresa: "Metalúrgica Andina S.A.", rubro: "Metalmecánica", tamano: "45 empleados", ubicacion: "Rosario, Santa Fe",
+    contacto: { nombre: "—", cargo: "aún sin identificar" },
+    fit: "A", fitReason: "Rubro y tamaño coinciden con el ICP (empresas industriales de 20-80 empleados con línea de producción propia). Señal de entrada: publicó búsqueda de nuevo proveedor en LinkedIn hace 5 días.",
+    completitud: 20,
+    checklist: [
+      { label: "Perfil ICP propio cargado y vigente", done: true, source: "manual", verified: true },
+      { label: "Investigación del prospecto (rubro, tamaño, señal de entrada)", done: true, source: "manual", verified: true },
+      { label: "Nivel de encaje calculado (A/B/C)", done: true, source: "sistema", verified: true },
+      { label: "Contacto inicial identificado", done: false },
+    ],
+    sugerencia: "Buscá en LinkedIn quién es el gerente de compras o de planta antes de escribir el primer mensaje — con encaje A conviene una aproximación directa y específica, no un mensaje genérico.",
+    historial: [
+      { fecha: "12 ago", nota: "Señal detectada: búsqueda de proveedor publicada en LinkedIn." },
+      { fecha: "13 ago", nota: "Encaje calculado automáticamente: A (95% match con ICP)." },
+    ],
+  },
+  {
+    id: 2, vendedor: "Ana Gómez", etapa: "fase0", empresa: "Distribuidora Centro", rubro: "Distribución mayorista", tamano: "12 empleados", ubicacion: "Córdoba",
+    contacto: { nombre: "—", cargo: "aún sin identificar" },
+    fit: "C", fitReason: "El rubro no coincide con el ICP definido (el negocio apunta a industria, no a distribución) y el tamaño está por debajo del mínimo relevante.",
+    completitud: 15,
+    checklist: [
+      { label: "Perfil ICP propio cargado y vigente", done: true, source: "manual", verified: true },
+      { label: "Investigación del prospecto (rubro, tamaño, señal de entrada)", done: true, source: "manual", verified: true },
+      { label: "Nivel de encaje calculado (A/B/C)", done: true, source: "sistema", verified: true },
+      { label: "Contacto inicial identificado", done: false },
+    ],
+    sugerencia: "Encaje bajo: no descartar, pero priorizar otras oportunidades primero. Si se contacta, usar un mensaje breve de calificación en vez de invertir tiempo en indagación profunda.",
+    historial: [
+      { fecha: "10 ago", nota: "Cargado desde formulario web (entrante)." },
+      { fecha: "11 ago", nota: "Encaje calculado automáticamente: C (38% match con ICP)." },
+    ],
+  },
+  {
+    id: 3, vendedor: "Diego Paz", etapa: "prospeccion", empresa: "Frigorífico del Sur", rubro: "Alimenticia", tamano: "80 empleados", ubicacion: "Bahía Blanca",
+    contacto: { nombre: "Marcela Ibáñez", cargo: "Jefa de Compras" },
+    fit: "A",
+    completitud: 45,
+    checklist: [
+      { label: "Contacto inicial con nombre y cargo confirmado", done: true, source: "email", verified: true },
+      { label: "Cómo llegamos al contacto", done: true, source: "manual", verified: true },
+      { label: "Señal de entrada identificada", done: true, source: "manual", verified: true },
+      { label: "Primera pregunta de indagación realizada", done: false },
+    ],
+    sugerencia: "Ya tenés el contacto correcto. Preguntá en el primer llamado qué los llevó a buscar cambio de proveedor ahora — la señal detectada fue un problema de entregas con el proveedor actual.",
+    historial: [
+      { fecha: "08 ago", nota: "Contacto confirmado vía LinkedIn: Marcela Ibáñez, Jefa de Compras." },
+      { fecha: "09 ago", nota: "Llamada agendada para el 19 de agosto." },
+    ],
+  },
+  {
+    id: 4, vendedor: "Diego Paz", etapa: "prospeccion", empresa: "Textil Norte", rubro: "Textil", tamano: "30 empleados", ubicacion: "Tucumán",
+    contacto: { nombre: "Roberto Salas", cargo: "Gerente General" },
+    fit: "B",
+    completitud: 40,
+    checklist: [
+      { label: "Contacto inicial con nombre y cargo confirmado", done: true, source: "whatsapp", verified: false, capturedValue: "Roberto Salas, mencionado como \"gerente general\" en el chat de WhatsApp del 14/8.", why: "Con el contacto correcto confirmado, el próximo mensaje puede ser específico en vez de genérico." },
+      { label: "Cómo llegamos al contacto", done: true, source: "manual", verified: true },
+      { label: "Señal de entrada identificada", done: false },
+      { label: "Primera pregunta de indagación realizada", done: false },
+    ],
+    sugerencia: "Falta la señal de entrada. Antes de cotizar nada, preguntá qué cambió recientemente en la empresa que motivó el interés — sin eso la propuesta va a sonar genérica.",
+    historial: [
+      { fecha: "14 ago", nota: "Referido por cliente actual (Hilados SRL)." },
+    ],
+  },
+  {
+    id: 5, vendedor: "Ana Gómez", etapa: "oportunidad", empresa: "Envases Patagonia", rubro: "Packaging", tamano: "60 empleados", ubicacion: "Neuquén",
+    contacto: { nombre: "Julián Ferreira", cargo: "Gerente de Operaciones" },
+    fit: "A",
+    completitud: 65,
+    checklist: [
+      { label: "Dolor real identificado", done: true, source: "llamada", verified: false, capturedValue: "En la transcripción, Julián dice: \"la verdad es que hoy perdemos entregas por las demoras del proveedor actual, eso nos está complicando bastante.\"", why: "Este es el dato que más pesa: cuando vendedor y comprador se alinean sobre el problema real, la tasa de cierre sube 38% (Emblase, 2024)." },
+      { label: "Quién decide y quién influye", done: true, source: "llamada", verified: true },
+      { label: "Criterios de decisión y competencia", done: false },
+      { label: "Urgencia / timing real", done: true, source: "whatsapp", verified: false, capturedValue: "Mensaje de WhatsApp del 6/8: \"Necesitamos resolver esto antes de fin de mes.\"", why: "Saber el timing real evita perseguir una oportunidad que en realidad no tiene apuro." },
+    ],
+    sugerencia: "Falta saber con quién más está cotizando y qué criterios va a usar para decidir. Preguntalo directamente en la próxima llamada — sin esto la cotización compite solo por precio.",
+    historial: [
+      { fecha: "02 ago", nota: "Reunión de indagación: dolor identificado — demoras de despacho con proveedor actual." },
+      { fecha: "07 ago", nota: "Confirmado que Julián decide, pero el dueño de la empresa debe aprobar." },
+    ],
+    minuta: {
+      fecha: "07 ago", origen: "llamada",
+      resumen: "Julián confirmó que las demoras de despacho del proveedor actual siguen complicando la operación y que necesita resolverlo antes de fin de mes. Él decide la parte técnica, pero el dueño de la empresa aprueba el gasto final.",
+      proximoVendedor: "Enviar antes del 12/8 un comparativo simple de tiempos de entrega actuales vs. propuestos.",
+      proximoCliente: "Confirmarle a Julián si el dueño va a estar disponible para una llamada corta la semana del 12.",
+      enviada: true,
+    },
+  },
+  {
+    id: 6, vendedor: "Lucía Reyes", etapa: "oportunidad", empresa: "AgroInsumos Litoral", rubro: "Agroindustria", tamano: "25 empleados", ubicacion: "Santa Fe",
+    contacto: { nombre: "Diego Correa", cargo: "Encargado de Compras" },
+    fit: "B",
+    completitud: 55,
+    checklist: [
+      { label: "Dolor real identificado", done: true, source: "llamada", verified: true },
+      { label: "Quién decide y quién influye", done: false },
+      { label: "Criterios de decisión y competencia", done: false },
+      { label: "Urgencia / timing real", done: true, source: "email", verified: false, capturedValue: "Email del 4/8: \"Nos gustaría avanzar antes de que termine el trimestre.\"", why: "Saber el timing real evita perseguir una oportunidad que en realidad no tiene apuro." },
+    ],
+    sugerencia: "Todavía no sabés quién aprueba la compra final. Preguntá directamente: \"¿quién más participa en esta decisión?\" antes de avanzar a cotización.",
+    historial: [
+      { fecha: "05 ago", nota: "Primera reunión: dolor identificado — costo alto del proveedor actual." },
+    ],
+  },
+  {
+    id: 7, vendedor: "Diego Paz", etapa: "cotizacion", empresa: "Construcciones Vallejo", rubro: "Construcción", tamano: "38 empleados", ubicacion: "Mendoza",
+    contacto: { nombre: "Laura Peña", cargo: "Administradora" },
+    fit: "A",
+    completitud: 80,
+    checklist: [
+      { label: "Presupuesto estimado conocido", done: true, source: "whatsapp", verified: false, capturedValue: "Mensaje de WhatsApp: \"Tenemos entre 3800 y 4200 dólares aprobados para esto.\"", why: "Con el presupuesto confirmado, la cotización deja de ser un tiro a ciegas." },
+      { label: "Proceso de aprobación interno mapeado", done: true, source: "llamada", verified: true },
+      { label: "Objeciones esperables anticipadas", done: false },
+    ],
+    sugerencia: "Faltan las objeciones esperables. Antes de enviar la cotización final, anticipá cómo vas a responder si comparan precio con la competencia — ya sabés que están evaluando dos proveedores más.",
+    historial: [
+      { fecha: "28 jul", nota: "Presupuesto informado: hasta USD 4.200." },
+      { fecha: "01 ago", nota: "Proceso de aprobación confirmado: Laura arma la propuesta, el dueño firma." },
+    ],
+  },
+  {
+    id: 8, vendedor: "Lucía Reyes", etapa: "definicion", empresa: "Cerámica Bellavista", rubro: "Manufactura", tamano: "55 empleados", ubicacion: "San Juan",
+    contacto: { nombre: "Martín Ocampo", cargo: "Director Comercial" },
+    fit: "A",
+    completitud: 90,
+    checklist: [
+      { label: "Fecha estimada de decisión y próximo paso", done: true, source: "email", verified: true },
+      { label: "Riesgos de la operación identificados", done: true, source: "llamada", verified: false, capturedValue: "En la llamada, Martín comenta: \"el único tema es que el presupuesto anual capaz ya está comprometido en otras cosas.\"", why: "Anticipar el riesgo ahora es lo que te permite tener un plan B antes de que el cierre se caiga." },
+      { label: "Plan de acción si la respuesta es negativa", done: false },
+    ],
+    sugerencia: "Definición prevista para el 22 de agosto. Preparar de antemano una alternativa por si la respuesta es negativa — el riesgo detectado es que el presupuesto anual ya esté comprometido.",
+    historial: [
+      { fecha: "15 ago", nota: "Cotización aprobada por el área técnica, pasa a definición final." },
+      { fecha: "16 ago", nota: "Fecha de decisión confirmada: 22 de agosto." },
+    ],
+  },
+  {
+    id: 9, vendedor: "Ana Gómez", etapa: "postventa", empresa: "Herrajes del Plata", rubro: "Metalmecánica", tamano: "40 empleados", ubicacion: "La Plata",
+    contacto: { nombre: "Sandra Molina", cargo: "Jefa de Compras" },
+    fit: "A", fitReason: "Cliente ganado el mes pasado con encaje A — la relación no termina en el cierre, ahora entra en acompañamiento de postventa.",
+    completitud: 60,
+    checklist: [
+      { label: "Entrega: llegó como y cuando se prometió", done: true, source: "whatsapp", verified: false, capturedValue: "Mensaje de Sandra del 10/8: \"llegó todo completo y en fecha, gracias.\"", why: "Confirmar la entrega real (no asumirla) es lo que evita enterarse tarde de un problema logístico." },
+      { label: "Utilización: lo están usando como esperaban", done: true, source: "llamada", verified: true },
+      { label: "Conformidad: está satisfecho, qué mejoraría", done: false },
+      { label: "Puntos de mejora detectados para la próxima compra", done: false },
+    ],
+    sugerencia: "Falta la pregunta de conformidad real, no asumir que \"si no se queja, está todo bien\". Llamá esta semana y preguntá directamente qué mejoraría de la experiencia — eso es lo que abre la puerta a la siguiente compra de forma genuina.",
+    historial: [
+      { fecha: "22 jul", nota: "Oportunidad ganada — pasa a seguimiento de postventa." },
+      { fecha: "10 ago", nota: "Entrega confirmada por WhatsApp, pendiente de validar utilización y conformidad." },
+    ],
+    minuta: {
+      fecha: "10 ago", origen: "whatsapp",
+      resumen: "Sandra confirmó que la entrega llegó completa y en fecha. Todavía no se preguntó por la utilización real ni por posibles mejoras para la próxima compra.",
+      proximoVendedor: "Llamar esta semana para preguntar por la utilización y la conformidad real, no solo por la entrega.",
+      proximoCliente: "Avisar si surge cualquier inconveniente con el producto, sin esperar a que alguien pregunte.",
+      enviada: false,
+    },
+  },
+];
+
+// ---- Navegación entre vistas ----
+const VIEWS = { pipeline: "viewPipeline", empresas: "viewStub", contactos: "viewStub", reportes: "viewReportes", config: "viewConfig" };
+const STUB_TITLES = { empresas: "Empresas", contactos: "Contactos" };
+document.querySelectorAll(".nav-item[data-nav]").forEach(item => {
+  item.addEventListener("click", () => {
+    document.querySelectorAll(".nav-item[data-nav]").forEach(i => i.classList.remove("active"));
+    item.classList.add("active");
+    const nav = item.dataset.nav;
+    Object.values(VIEWS).forEach(id => { document.getElementById(id).style.display = "none"; });
+    document.getElementById(VIEWS[nav]).style.display = "block";
+    if (STUB_TITLES[nav]) document.getElementById("stubTitle").textContent = STUB_TITLES[nav];
+    if (nav === "reportes") renderReportes();
+  });
+});
+
+// ---- Reportes: vista de gerencia ----
+function renderReportes() {
+  const totalOportunidades = COMPANIES.length;
+  const avgCompletitud = Math.round(COMPANIES.reduce((s, c) => s + c.completitud, 0) / totalOportunidades);
+  const conAlertas = COMPANIES.filter(c => c.checklist.some(i => i.done && !i.verified) || c.checklist.some(i => !i.done)).length;
+  const fitCounts = { A: 0, B: 0, C: 0 };
+  COMPANIES.forEach(c => fitCounts[c.fit]++);
+
+  document.getElementById("kpiRow").innerHTML = `
+    <div class="kpi-tile">
+      <div class="kpi-label">Oportunidades activas</div>
+      <div class="kpi-value">${totalOportunidades}</div>
+      <div class="kpi-sub">en las 5 etapas del proceso</div>
+    </div>
+    <div class="kpi-tile">
+      <div class="kpi-label">Indagación promedio del equipo</div>
+      <div class="kpi-value">${avgCompletitud}%</div>
+      <div class="kpi-sub">información de valor cargada</div>
+    </div>
+    <div class="kpi-tile">
+      <div class="kpi-label">Con datos por confirmar o vacíos</div>
+      <div class="kpi-value warn">${conAlertas}</div>
+      <div class="kpi-sub">no bloqueadas — solo señaladas</div>
+    </div>
+    <div class="kpi-tile">
+      <div class="kpi-label">Encaje A del total</div>
+      <div class="kpi-value">${Math.round(fitCounts.A / totalOportunidades * 100)}%</div>
+      <div class="kpi-sub">${fitCounts.A} de ${totalOportunidades} oportunidades</div>
+    </div>
+  `;
+
+  const NIVELES = [
+    { min: 0, label: "Novato/a", color: "var(--text-muted)" },
+    { min: 40, label: "Investigador/a", color: "var(--brand-dark)" },
+    { min: 65, label: "Consultor/a", color: "var(--status-good)" },
+    { min: 85, label: "Asesor/a Senior", color: "var(--status-good)" },
+  ];
+  function nivelDe(avg) {
+    return [...NIVELES].reverse().find(n => avg >= n.min);
+  }
+
+  const vendedores = [...new Set(COMPANIES.map(c => c.vendedor))];
+  const rows = vendedores.map(v => {
+    const items = COMPANIES.filter(c => c.vendedor === v);
+    const avg = Math.round(items.reduce((s, c) => s + c.completitud, 0) / items.length);
+    const alerts = items.filter(c => c.checklist.some(i => i.done && !i.verified) || c.checklist.some(i => !i.done)).length;
+    const nivel = nivelDe(avg);
+    return `
+      <tr>
+        <td><b>${v}</b><div style="font-size:10.5px; color:${nivel.color}; font-weight:600; margin-top:2px;">${nivel.label}</div></td>
+        <td>${items.length}</td>
+        <td><span class="mini-bar-track"><span class="mini-bar-fill" style="width:${avg}%"></span></span>${avg}%</td>
+        <td>${alerts > 0
+          ? `<span class="alert-pill warn">${alerts} para acompañar</span>`
+          : `<span class="alert-pill ok">Al día</span>`}</td>
+      </tr>`;
+  }).join("");
+
+  document.getElementById("teamTable").innerHTML = `
+    <thead><tr><th>Vendedor</th><th>Oportunidades</th><th>Indagación promedio</th><th>Estado</th></tr></thead>
+    <tbody>${rows}</tbody>
+  `;
+
+  const fitColors = { A: "var(--status-good)", B: "var(--status-warning)", C: "var(--status-serious)" };
+  document.getElementById("fitBars").innerHTML = ["A", "B", "C"].map(f => `
+    <div class="fit-bar-row">
+      <span class="fbr-label">Encaje ${f}</span>
+      <span class="fbr-track"><span class="fbr-fill" style="width:${fitCounts[f] / totalOportunidades * 100}%; background:${fitColors[f]}"></span></span>
+      <span class="fbr-count">${fitCounts[f]}</span>
+    </div>
+  `).join("");
+}
+
+// ---- Configuración: wizard de setup con IA ----
+document.querySelectorAll(".wizard-next").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const next = btn.dataset.next;
+    document.querySelectorAll(".wizard-panel").forEach(p => p.classList.remove("active"));
+    document.querySelectorAll(".wizard-step").forEach(s => s.classList.remove("active"));
+    document.getElementById("wstep" + next).classList.add("active");
+    document.querySelector(`.wizard-step[data-step="${next}"]`).classList.add("active");
+  });
+});
+
+const board = document.getElementById("board");
+
+STAGES.forEach(stage => {
+  const items = COMPANIES.filter(c => c.etapa === stage.key);
+  const col = document.createElement("div");
+  col.className = "column" + (stage.phaseZero ? " phase-zero" : "") + (stage.postSale ? " post-sale" : "");
+  col.innerHTML = `
+    <div class="column-head">
+      <h2>${stage.label}</h2>
+      <span class="column-count">${items.length}</span>
+    </div>
+  `;
+  items.forEach(c => col.appendChild(renderCard(c)));
+  board.appendChild(col);
+});
+
+// ---- Vista mobile: lista priorizada para el vendedor en la calle ----
+const STAGE_LABEL_SHORT = { fase0: "Investigación previa", prospeccion: "Prospección", oportunidad: "Oportunidad", cotizacion: "Cotización", definicion: "Definición", postventa: "Postventa" };
+const phoneList = document.getElementById("phoneList");
+const priorized = [...COMPANIES].sort((a, b) => {
+  const aPending = a.checklist.some(i => i.done && !i.verified);
+  const bPending = b.checklist.some(i => i.done && !i.verified);
+  if (aPending !== bPending) return aPending ? -1 : 1;
+  return a.completitud - b.completitud;
+});
+priorized.forEach(c => {
+  const pendingCount = c.checklist.filter(i => i.done && !i.verified).length;
+  const card = document.createElement("div");
+  card.className = "phone-card";
+  card.innerHTML = `
+    <div class="pc-top">
+      <div>
+        <div class="pc-empresa">${c.empresa}</div>
+        <div class="pc-stage">${STAGE_LABEL_SHORT[c.etapa]} · Encaje ${c.fit} · ${c.completitud}%</div>
+      </div>
+      <span class="fit-badge fit-${c.fit}">${c.fit}</span>
+    </div>
+    <div class="pc-action">${pendingCount > 0 ? `${pendingCount} dato${pendingCount > 1 ? "s" : ""} para confirmar con un toque` : c.sugerencia.split(".")[0] + "."}</div>
+  `;
+  card.addEventListener("click", () => openDrawer(c));
+  phoneList.appendChild(card);
+});
+
+document.getElementById("btnDesktop").addEventListener("click", () => setView(false));
+document.getElementById("btnMobile").addEventListener("click", () => setView(true));
+function setView(mobile) {
+  document.body.classList.toggle("mobile-mode", mobile);
+  document.getElementById("btnDesktop").classList.toggle("active", !mobile);
+  document.getElementById("btnMobile").classList.toggle("active", mobile);
+}
+
+function renderCard(c) {
+  const card = document.createElement("div");
+  card.className = "card";
+  card.innerHTML = `
+    <div class="card-top">
+      <div>
+        <div class="card-empresa">${c.empresa}</div>
+        <div class="card-contacto">${c.contacto.nombre !== "—" ? c.contacto.nombre + " · " + c.contacto.cargo : "Contacto: " + c.contacto.cargo}</div>
+      </div>
+      <span class="fit-badge fit-${c.fit}">Encaje ${c.fit}</span>
+    </div>
+    <div class="progress-row">
+      <div class="progress-label"><span>Indagación cargada</span><span>${c.completitud}%</span></div>
+      <div class="progress-track"><div class="progress-fill" style="width:${c.completitud}%"></div></div>
+    </div>
+    <div class="card-next"><b>Sugerido:</b> ${c.sugerencia.split(".")[0]}.</div>
+  `;
+  card.addEventListener("click", () => openDrawer(c));
+  return card;
+}
+
+const SOURCE_ICONS = {
+  email: '<svg width="9" height="9" viewBox="0 0 16 16" fill="none"><rect x="1.5" y="3" width="13" height="10" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M2 4l6 5 6-5" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  whatsapp: '<svg width="9" height="9" viewBox="0 0 16 16" fill="none"><path d="M2 14l1.1-3.3A6 6 0 1 1 6.2 13L2 14z" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linejoin="round"/></svg>',
+  llamada: '<svg width="9" height="9" viewBox="0 0 16 16" fill="none"><path d="M3 2.5c0 6 4.5 10.5 10.5 10.5l1-2.3-3-1-1 1.2a8 8 0 0 1-4.9-4.9l1.2-1-1-3L3 2.5z" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linejoin="round"/></svg>',
+  manual: '<svg width="9" height="9" viewBox="0 0 16 16" fill="none"><path d="M11 2l3 3-8 8-3.5 1L3 10.5 11 2z" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linejoin="round"/></svg>',
+  sistema: '<svg width="9" height="9" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2.3" stroke="currentColor" stroke-width="1.2"/><path d="M8 2v2M8 12v2M2 8h2M12 8h2M3.8 3.8l1.4 1.4M10.8 10.8l1.4 1.4M3.8 12.2l1.4-1.4M10.8 5.2l1.4-1.4" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>',
+};
+const SOURCE_LABEL = { email: "Email", whatsapp: "WhatsApp", llamada: "Llamada", manual: "Manual", sistema: "Sistema" };
+
+const drawer = document.getElementById("drawer");
+const backdrop = document.getElementById("backdrop");
+
+// ---- Estímulo con propósito: racha de confirmaciones de la sesión (no persiste, no compara con nadie) ----
+let confirmacionesSesion = 0;
+const MILESTONES = {
+  3: "Racha de 3 datos confirmados. Así se construye una oportunidad bien indagada, no llenando campos por cumplir.",
+  6: "6 datos confirmados esta sesión. Cada uno es información que ya vimos que sube la probabilidad de cierre.",
+};
+function registrarConfirmacion() {
+  confirmacionesSesion++;
+  if (MILESTONES[confirmacionesSesion]) showToast(MILESTONES[confirmacionesSesion]);
+}
+let toastTimer = null;
+function showToast(msg) {
+  const toast = document.getElementById("toast");
+  toast.innerHTML = `<span class="toast-icon">◆</span><span><b>Buen trabajo.</b> ${msg}</span>`;
+  toast.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove("show"), 4200);
+}
+
+function openDrawer(c) {
+  document.getElementById("dEmpresa").textContent = c.empresa;
+  document.getElementById("dMeta").textContent = `${c.rubro} · ${c.tamano} · ${c.ubicacion}`;
+
+  const ICONS = {
+    check: '<svg width="9" height="9" viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="#0ca30c" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    empty: '<svg width="9" height="9" viewBox="0 0 12 12"><circle cx="6" cy="6" r="2" fill="#b8790f"/></svg>',
+    dash: '<svg width="9" height="9" viewBox="0 0 12 12"><line x1="2.5" y1="6" x2="9.5" y2="6" stroke="#184f95" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  };
+
+  const checklistHtml = c.checklist.map((item, idx) => {
+    if (item.done && item.verified) {
+      // Confirmado
+      return `
+        <div class="checklist-item">
+          <span class="check-icon done">${ICONS.check}</span>
+          <span class="item-label">
+            <span>${item.label}</span>
+            ${item.source ? `<span class="source-tag">${SOURCE_ICONS[item.source]} ${SOURCE_LABEL[item.source]}</span>` : ""}
+          </span>
+        </div>`;
+    }
+    if (item.done && !item.verified) {
+      // Capturado, pendiente de confirmar — fila tocable
+      return `
+        <div>
+          <div class="checklist-item unverified-row" data-toggle="${idx}">
+            <div class="row-top">
+              <span class="check-icon unverified">${ICONS.dash}</span>
+              <span class="item-label">
+                <span>${item.label}</span>
+                <span class="source-tag">${SOURCE_ICONS[item.source]} ${SOURCE_LABEL[item.source]}</span>
+                <span class="unverified-tag">Tocar para confirmar</span>
+              </span>
+            </div>
+          </div>
+          <div class="confirm-panel" id="panel-${idx}">
+            <div class="detected-label">Detectado automáticamente</div>
+            <div class="detected-text">"${item.capturedValue || ""}"</div>
+            <textarea id="edit-${idx}">${item.capturedValue || ""}</textarea>
+            <div class="confirm-actions">
+              <button class="btn-confirm" data-confirm="${idx}">Confirmar</button>
+              <button class="btn-edit" data-edit="${idx}">Guardar corrección</button>
+            </div>
+          </div>
+        </div>`;
+    }
+    // No capturado
+    return `
+      <div class="checklist-item pending-text">
+        <span class="check-icon pending">${ICONS.empty}</span>
+        <span class="item-label"><span>${item.label} — falta cargar</span></span>
+      </div>`;
+  }).join("");
+
+  const historialHtml = c.historial.map(h => `
+    <div class="timeline-item">
+      <div class="timeline-date">${h.fecha}</div>
+      <div class="timeline-note">${h.nota}</div>
+    </div>
+  `).join("");
+
+  const drawerBody = document.getElementById("drawerBody");
+  drawerBody.innerHTML = `
+    <div class="section-title">Encaje con el ICP</div>
+    <div class="fit-panel">
+      <span class="fit-badge fit-${c.fit}">${c.fit}</span>
+      <p>${c.fitReason || "Encaje calculado contra el perfil ICP cargado de la empresa."}</p>
+    </div>
+
+    <div class="section-title">Contacto</div>
+    <div class="contact-row">
+      <span>${c.contacto.nombre}</span>
+      <span class="role">${c.contacto.cargo}</span>
+    </div>
+
+    <div class="section-title">Indagación de esta etapa (${c.completitud}% completa)</div>
+    ${checklistHtml}
+    <div class="capture-legend">
+      <span>${SOURCE_ICONS.email} Email</span>
+      <span>${SOURCE_ICONS.whatsapp} WhatsApp</span>
+      <span>${SOURCE_ICONS.llamada} Llamada</span>
+      <span>${SOURCE_ICONS.sistema} Calculado</span>
+      <span>${SOURCE_ICONS.manual} Cargado a mano</span>
+      &nbsp;— así se completó cada ítem, sin que el vendedor lo tipeara (salvo lo marcado como "manual").
+    </div>
+
+    <div class="section-title">Sugerencia del sistema</div>
+    <div class="suggestion-box"><b>Próxima acción</b>${c.sugerencia}</div>
+
+    <div class="section-title">Minuta del último contacto</div>
+    ${c.minuta ? `
+      <div class="minuta-box">
+        <div class="minuta-head">
+          <b>${c.minuta.fecha} · ${SOURCE_LABEL[c.minuta.origen] || c.minuta.origen}</b>
+          <span class="minuta-tag">${c.minuta.enviada ? "Enviada al cliente" : "Borrador — sin enviar"}</span>
+        </div>
+        <p style="margin:0 0 6px;">${c.minuta.resumen}</p>
+        <div class="minuta-row"><b>Nuestro próximo paso:</b> ${c.minuta.proximoVendedor}</div>
+        <div class="minuta-row"><b>Del lado del cliente:</b> ${c.minuta.proximoCliente}</div>
+      </div>
+      <div class="mock-flag">Generada automáticamente a partir del contacto — el vendedor la revisa y ajusta antes de compartirla. Pensada para atención al cliente, no solo como registro interno.</div>
+    ` : `
+      <div class="minuta-box empty">Todavía no hay un contacto registrado como para generar una minuta. Se arma sola después de la próxima llamada, email o intercambio largo de WhatsApp.</div>
+    `}
+
+    <div class="section-title">Historial</div>
+    ${historialHtml}
+
+    <div class="mock-flag">Vista de ejemplo — en la versión real, parte de este historial se completaría automáticamente desde el email y el calendario.</div>
+  `;
+
+  // Tocar una fila "pendiente de confirmar" abre/cierra su panel de confirmación
+  drawerBody.querySelectorAll("[data-toggle]").forEach(row => {
+    row.addEventListener("click", () => {
+      const panel = document.getElementById("panel-" + row.dataset.toggle);
+      panel.classList.toggle("open");
+    });
+  });
+
+  // Confirmar tal cual quedó capturado
+  drawerBody.querySelectorAll("[data-confirm]").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      markConfirmed(btn.dataset.confirm);
+    });
+  });
+
+  // Guardar una corrección manual sobre lo capturado
+  drawerBody.querySelectorAll("[data-edit]").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      markConfirmed(btn.dataset.edit, true);
+    });
+  });
+
+  function markConfirmed(idx, corrected) {
+    const row = drawerBody.querySelector(`[data-toggle="${idx}"]`);
+    const panel = document.getElementById("panel-" + idx);
+    if (!row || !panel) return;
+    row.querySelector(".check-icon").outerHTML = `<span class="check-icon done">${ICONS.check}</span>`;
+    row.querySelector(".unverified-tag").outerHTML = corrected
+      ? '<span class="unverified-tag" style="background:var(--status-good-bg);color:var(--status-good)">Corregido y confirmado</span>'
+      : '<span class="unverified-tag" style="background:var(--status-good-bg);color:var(--status-good)">Confirmado</span>';
+    row.style.cursor = "default";
+
+    const item = c.checklist[idx];
+    const wrapper = row.parentElement;
+    row.replaceWith(row.cloneNode(true)); // quita el listener de toggle
+    panel.classList.remove("open");
+    panel.remove();
+
+    if (item && item.why && wrapper) {
+      const note = document.createElement("div");
+      note.className = "why-note";
+      note.innerHTML = `<span>✓</span><span>${item.why}</span>`;
+      wrapper.appendChild(note);
+    }
+
+    registrarConfirmacion();
+  }
+
+  drawer.classList.add("open");
+  backdrop.classList.add("open");
+}
+
+function closeDrawer() {
+  drawer.classList.remove("open");
+  backdrop.classList.remove("open");
+}
+
+document.getElementById("drawerClose").addEventListener("click", closeDrawer);
+backdrop.addEventListener("click", closeDrawer);
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeDrawer(); });
+</script>
+
+</body>
+</html>
